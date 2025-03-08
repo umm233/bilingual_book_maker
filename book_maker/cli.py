@@ -13,7 +13,46 @@ def parse_prompt_arg(prompt_arg):
     if prompt_arg is None:
         return prompt
 
-    if not any(prompt_arg.endswith(ext) for ext in [".json", ".txt"]):
+    # Check if it's a path to a markdown file (PromptDown format)
+    if prompt_arg.endswith(".md") and os.path.exists(prompt_arg):
+        try:
+            from promptdown import StructuredPrompt
+            structured_prompt = StructuredPrompt.from_promptdown_file(prompt_arg)
+            
+            # Initialize our prompt structure
+            prompt = {}
+            
+            # Handle developer_message or system_message
+            # Developer message takes precedence if both are present
+            if hasattr(structured_prompt, 'developer_message') and structured_prompt.developer_message:
+                prompt['system'] = structured_prompt.developer_message
+            elif hasattr(structured_prompt, 'system_message') and structured_prompt.system_message:
+                prompt['system'] = structured_prompt.system_message
+            
+            # Extract user message from conversation
+            if hasattr(structured_prompt, 'conversation') and structured_prompt.conversation:
+                for message in structured_prompt.conversation:
+                    if message.role.lower() == 'user':
+                        prompt['user'] = message.content
+                        break
+            
+            # Ensure we found a user message
+            if 'user' not in prompt or not prompt['user']:
+                raise ValueError("PromptDown file must contain at least one user message")
+                
+            print(f"Successfully loaded PromptDown file: {prompt_arg}")
+            
+            # Validate required placeholders
+            if any(c not in prompt["user"] for c in ["{text}"]):
+                raise ValueError("User message in PromptDown must contain `{text}` placeholder")
+            
+            return prompt
+        except Exception as e:
+            print(f"Error parsing PromptDown file: {e}")
+            # Fall through to other parsing methods
+    
+    # Existing parsing logic for JSON strings and other formats
+    if not any(prompt_arg.endswith(ext) for ext in [".json", ".txt", ".md"]):
         try:
             # user can define prompt by passing a json string
             # eg: --prompt '{"system": "You are a professional translator who translates computer technology books", "user": "Translate \`{text}\` to {language}"}'
@@ -35,8 +74,9 @@ def parse_prompt_arg(prompt_arg):
     else:
         raise FileNotFoundError(f"{prompt_arg} not found")
 
-    if prompt is None or any(c not in prompt["user"] for c in ["{text}", "{language}"]):
-        raise ValueError("prompt must contain `{text}` and `{language}`")
+    # if prompt is None or any(c not in prompt["user"] for c in ["{text}", "{language}"]):
+    if prompt is None or any(c not in prompt["user"] for c in ["{text}"]):
+        raise ValueError("prompt must contain `{text}`")
 
     if "user" not in prompt:
         raise ValueError("prompt must contain the key of `user`")
@@ -375,7 +415,7 @@ So you are close to reaching the limit. You have to choose your own value, there
         API_KEY = options.deepl_key or env.get("BBM_DEEPL_API_KEY")
         if not API_KEY:
             raise Exception("Please provide deepl key")
-    elif options.model == "claude":
+    elif options.model.startswith("claude"):
         API_KEY = options.claude_key or env.get("BBM_CLAUDE_API_KEY")
         if not API_KEY:
             raise Exception("Please provide claude key")
@@ -440,6 +480,7 @@ So you are close to reaching the limit. You have to choose your own value, there
         prompt_config=parse_prompt_arg(options.prompt_arg),
         single_translate=options.single_translate,
         context_flag=options.context_flag,
+        context_paragraph_limit=options.context_paragraph_limit,
         temperature=options.temperature,
     )
     # other options
@@ -493,6 +534,8 @@ So you are close to reaching the limit. You have to choose your own value, there
         e.translate_model.set_gpt4omini_models()
     if options.model == "gpt4o":
         e.translate_model.set_gpt4o_models()
+    if options.model.startswith("claude-"):
+        e.translate_model.set_claude_model(options.model)
     if options.block_size > 0:
         e.block_size = options.block_size
     if options.batch_flag:
