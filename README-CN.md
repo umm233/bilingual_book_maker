@@ -167,11 +167,7 @@ bbook --book_name test_books/animal_farm.epub --openai_key ${openai_key} --test
 
 - `--use_context`:
 
-  prompts the model to create a three-paragraph summary. If it's the beginning of the translation, it will summarize the entire passage sent (the size depending on `--accumulated_num`).
-  For subsequent passages, it will amend the summary to include details from the most recent passage, creating a running one-paragraph context payload of the important details of the entire translated work. This improves consistency of flow and tone throughout the translation. This option is available for all ChatGPT-compatible models and Gemini models.
-
-  模型提示词将创建三段摘要。如果是翻译的开始，它将总结发送的整个段落（大小取决于`--accumulated_num`）。
-  对于后续的段落，它将修改摘要，以包括最近段落的细节，创建一个完整的段落上下文负载，包含整个翻译作品的重要细节。 这提高了整个翻译过程中的流畅性和语气的一致性。 此选项适用于所有ChatGPT兼容型号和Gemini型号。
+  这个选项会提示模型生成三段式摘要。若处于翻译的起始阶段，模型会总结接收到的整段内容（具体内容量取决于参数 `--accumulated_num`）。对于后续段落，模型会更新摘要，整合最新段落的关键细节，形成一个持续更新的上下文摘要，以确保整个译文在流畅度和语气上保持一致。此功能适用于所有与ChatGPT兼容的模型以及Gemini模型。
 
   - `--context_paragraph_limit`:
 
